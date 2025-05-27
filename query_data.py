@@ -2,8 +2,12 @@ import argparse
 # from dataclasses import dataclass
 from langchain_community.vectorstores import Chroma
 from langchain_openai import OpenAIEmbeddings
-from langchain_openai import ChatOpenAI
+from langchain_huggingface import HuggingFaceEmbeddings
 from langchain.prompts import ChatPromptTemplate
+import torch
+import os
+from huggingface_hub import login
+torch.get_default_device = lambda: "cpu"
 
 CHROMA_PATH = "chroma"
 
@@ -19,19 +23,19 @@ Answer the question based on the above context: {question}
 
 
 def main():
-    # Create CLI.
+    login(os.getenv("HUGGING_FACE_TOKEN")) 
     parser = argparse.ArgumentParser()
     parser.add_argument("query_text", type=str, help="The query text.")
     args = parser.parse_args()
     query_text = args.query_text
 
     # Prepare the DB.
-    embedding_function = OpenAIEmbeddings()
+    embedding_function = HuggingFaceEmbeddings(model_name="sentence-transformers/all-mpnet-base-v2")#OpenAIEmbeddings()
     db = Chroma(persist_directory=CHROMA_PATH, embedding_function=embedding_function)
 
     # Search the DB.
     results = db.similarity_search_with_relevance_scores(query_text, k=3)
-    if len(results) == 0 or results[0][1] < 0.7:
+    if len(results) == 0 or results[0][1] < 0.5:
         print(f"Unable to find matching results.")
         return
 
